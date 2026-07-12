@@ -1,18 +1,20 @@
+#include "PatroLvglManager.h"
+#include "PatroUiManager.h" // Novo gerente de interface
 #include <Arduino.h>
 #include <TFT_eSPI.h>
-#include "PatroLvglManager.h"
 
 TFT_eSPI tft = TFT_eSPI();
-PatroLvglManager uiManager(tft);
+PatroLvglManager hardwareCore(tft);
+PatroUiManager interfaceApp;
 
 void setup() {
-    Serial.begin(115200);
-    
-    uiManager.Init();
-    uiManager.CreateTestUi();
+  Serial.begin(115200);
+
+  hardwareCore.Init(); // Liga a tela e o touch no LVGL
+  interfaceApp.Init(); // Desenha o Layout Mestre e o Menu!
 }
 
 void loop() {
-    uiManager.Update();
-    delay(5); // ESP32 respira por 5ms (sincronizado com o lv_tick_inc)
+  hardwareCore.Update();
+  delay(5);
 }
