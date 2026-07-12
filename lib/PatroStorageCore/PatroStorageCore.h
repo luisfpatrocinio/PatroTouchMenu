@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
-
 class PatroStorageCore {
 public:
   void Init();

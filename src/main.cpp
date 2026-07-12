@@ -3,6 +3,7 @@
 #include "PatroUiManager.h"
 #include "PatroWifiCore.h"
 #include <Arduino.h>
+#include <Preferences.h>
 #include <TFT_eSPI.h>
 
 TFT_eSPI tft = TFT_eSPI();
