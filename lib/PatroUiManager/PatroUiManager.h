@@ -2,6 +2,7 @@
 #define PATRO_UI_MANAGER_H
 
 #include <Arduino.h>
+#include <PatroWifiCore.h>
 #include <lvgl.h>
 
 class PatroUiManager {
@@ -13,9 +14,12 @@ private:
   lv_obj_t *splashScreen;
   unsigned long splashStartTime;
   bool isSplashActive;
-
-  // Flag para saber se estamos aguardando a lista de Wi-Fi
   bool isWaitingForScan;
+
+  WifiState lastWifiState;
+
+  bool isPendingScan;
+  unsigned long scanTriggerTime;
 
   lv_obj_t *statusBar;
   lv_obj_t *contentArea;

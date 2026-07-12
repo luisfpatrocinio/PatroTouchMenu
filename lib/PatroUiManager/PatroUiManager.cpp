@@ -8,6 +8,9 @@ extern PatroUiManager interfaceApp;
 
 void PatroUiManager::Init() {
   isSplashActive = true;
+  isWaitingForScan = false;
+  isPendingScan = false;
+  lastWifiState = WifiState::Disconnected;
   splashStartTime = millis();
   BuildSplashScreen();
 }
@@ -20,15 +23,49 @@ void PatroUiManager::Update() {
     BuildMainMenu();
   }
 
+  // ==========================================
+  // GATILHO DE SCAN COM ATRASO (Para não congelar a UI)
+  // ==========================================
+  if (isPendingScan && (millis() - scanTriggerTime > 50)) {
+    isPendingScan = false;
+    wifiCore
+        .StartScan(); // Agora sim o ESP32 congela, mas a tela já está certa!
+  }
+
+  // ==========================================
+  // LÓGICA DE ESPERA DA LISTA
+  // ==========================================
   if (isWaitingForScan) {
     if (wifiCore.GetState() == WifiState::ScanComplete) {
       isWaitingForScan = false;
       BuildWifiList();
-    }
-    // Se falhar ou desconectar no meio do processo, aborta a tela de loading
-    else if (wifiCore.GetState() == WifiState::Disconnected) {
+    } else if (wifiCore.GetState() == WifiState::Disconnected) {
       isWaitingForScan = false;
       HandleScanFailure();
+    }
+  }
+
+  // ==========================================
+  // ATUALIZAÇÃO DINÂMICA DA BARRA DE STATUS
+  // ==========================================
+  WifiState currentState = wifiCore.GetState();
+
+  // Só atualiza a tela se o estado mudou (evita piscar a tela à toa)
+  if (currentState != lastWifiState) {
+    lastWifiState = currentState;
+
+    if (currentState == WifiState::Connected) {
+      lv_label_set_text(labelWifiIcon, LV_SYMBOL_WIFI " Conectado");
+      lv_obj_set_style_text_color(labelWifiIcon, lv_color_hex(0x00FF00),
+                                  0); // Verde brilhante!
+    } else if (currentState == WifiState::Connecting) {
+      lv_label_set_text(labelWifiIcon, LV_SYMBOL_WIFI " Conectando...");
+      lv_obj_set_style_text_color(labelWifiIcon, lv_color_hex(0xFFFF00),
+                                  0); // Amarelo
+    } else {
+      lv_label_set_text(labelWifiIcon, LV_SYMBOL_WIFI " Desc.");
+      lv_obj_set_style_text_color(labelWifiIcon, lv_color_hex(0x888888),
+                                  0); // Cinza
     }
   }
 }
@@ -175,8 +212,12 @@ void PatroUiManager::OnMainMenuBtnClicked(lv_event_t *event) {
   const char *btnId = (const char *)lv_event_get_user_data(event);
 
   if (strcmp(btnId, "wifi") == 0) {
+    // Pede pro LVGL desenhar a tela de loading
     interfaceApp.ShowWifiLoading();
-    wifiCore.StartScan();
+
+    // Arma o gatilho e anota a hora exata
+    interfaceApp.isPendingScan = true;
+    interfaceApp.scanTriggerTime = millis();
   }
 }
 
