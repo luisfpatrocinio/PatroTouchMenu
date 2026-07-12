@@ -6,20 +6,20 @@
 class PatroUiManager {
 public:
   void Init();
-  void Update(); // Nova função para gerenciar o tempo da UI
+  void Update();
 
 private:
-  // Controle da Splash Screen
   lv_obj_t *splashScreen;
   unsigned long splashStartTime;
   bool isSplashActive;
 
-  // Nossos containers principais
+  // Flag para saber se estamos aguardando a lista de Wi-Fi
+  bool isWaitingForScan;
+
   lv_obj_t *statusBar;
   lv_obj_t *contentArea;
   lv_obj_t *mainMenu;
 
-  // Elementos dinâmicos da Barra de Status
   lv_obj_t *labelWifiIcon;
   lv_obj_t *labelBatteryIcon;
 
@@ -27,7 +27,14 @@ private:
   void BuildMasterLayout();
   void BuildMainMenu();
 
-  static void onMainMenuBtnClicked(lv_event_t *event);
+  // Novas telas do fluxo de Rede
+  void ShowWifiLoading();
+  void BuildWifiList();
+
+  // Callbacks em PascalCase
+  static void OnMainMenuBtnClicked(lv_event_t *event);
+  static void OnNetworkBtnClicked(lv_event_t *event);
+  static void OnBackBtnClicked(lv_event_t *event);
 };
 
 #endif

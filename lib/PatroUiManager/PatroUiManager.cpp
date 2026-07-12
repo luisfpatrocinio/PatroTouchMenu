@@ -1,9 +1,10 @@
 #include "PatroUiManager.h"
-
 #include "PatroWifiCore.h"
-extern PatroWifiCore wifiCore;
-
 #include <Arduino.h>
+
+// Instâncias globais necessárias para os callbacks se comunicarem
+extern PatroWifiCore wifiCore;
+extern PatroUiManager interfaceApp;
 
 void PatroUiManager::Init() {
   isSplashActive = true;
@@ -22,6 +23,12 @@ void PatroUiManager::Update() {
     // Constrói a interface definitiva
     BuildMasterLayout();
     BuildMainMenu();
+  }
+
+  // Fica de olho no backend. Se o scan terminar, desenha a lista!
+  if (isWaitingForScan && wifiCore.GetState() == WifiState::ScanComplete) {
+    isWaitingForScan = false;
+    BuildWifiList();
   }
 }
 
@@ -91,26 +98,75 @@ void PatroUiManager::BuildMainMenu() {
 
   lv_obj_t *btnWifi =
       lv_list_add_button(mainMenu, LV_SYMBOL_WIFI, "  Rede Wi-Fi");
-  lv_obj_add_event_cb(btnWifi, onMainMenuBtnClicked, LV_EVENT_CLICKED,
+  lv_obj_add_event_cb(btnWifi, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
                       (void *)"wifi");
 
   lv_obj_t *btnTheme =
       lv_list_add_button(mainMenu, LV_SYMBOL_TINT, "  Personalizar Tema");
-  lv_obj_add_event_cb(btnTheme, onMainMenuBtnClicked, LV_EVENT_CLICKED,
+  lv_obj_add_event_cb(btnTheme, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
                       (void *)"theme");
 
   lv_obj_t *btnSys = lv_list_add_button(mainMenu, LV_SYMBOL_SETTINGS,
                                         "  Configuracoes do Sistema");
-  lv_obj_add_event_cb(btnSys, onMainMenuBtnClicked, LV_EVENT_CLICKED,
+  lv_obj_add_event_cb(btnSys, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
                       (void *)"system");
 }
 
-void PatroUiManager::onMainMenuBtnClicked(lv_event_t *event) {
+void PatroUiManager::ShowWifiLoading() {
+  // Apaga o menu principal de forma limpa
+  lv_obj_clean(contentArea);
+
+  lv_obj_t *loadingLabel = lv_label_create(contentArea);
+  lv_label_set_text(loadingLabel, LV_SYMBOL_REFRESH " Procurando redes...");
+  lv_obj_set_style_text_color(loadingLabel, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_center(loadingLabel);
+
+  isWaitingForScan = true; // Avisa o Update() para ficar alerta
+}
+
+void PatroUiManager::BuildWifiList() {
+  lv_obj_clean(contentArea);
+
+  lv_obj_t *wifiList = lv_list_create(contentArea);
+  lv_obj_set_size(wifiList, 320, 210);
+  lv_obj_center(wifiList);
+  lv_obj_set_style_radius(wifiList, 0, 0);
+  lv_obj_set_style_border_width(wifiList, 0, 0);
+  lv_obj_set_style_bg_color(wifiList, lv_color_hex(0x1a1a1a), 0);
+
+  // Adiciona o botão de voltar primeiro, no topo da lista
+  lv_obj_t *btnBack = lv_list_add_button(wifiList, LV_SYMBOL_LEFT, "  Voltar");
+  lv_obj_add_event_cb(btnBack, OnBackBtnClicked, LV_EVENT_CLICKED, NULL);
+
+  int totalNetworks = wifiCore.GetFoundNetworksCount();
+
+  if (totalNetworks == 0) {
+    lv_list_add_text(wifiList, "Nenhuma rede encontrada.");
+  } else {
+    // Laço de repetição para criar um botão para cada roteador encontrado
+    for (int i = 0; i < totalNetworks; i++) {
+      String ssid = wifiCore.GetNetworkName(i);
+      lv_obj_t *btnNet =
+          lv_list_add_button(wifiList, LV_SYMBOL_WIFI, ssid.c_str());
+      lv_obj_add_event_cb(btnNet, OnNetworkBtnClicked, LV_EVENT_CLICKED, NULL);
+    }
+  }
+}
+
+void PatroUiManager::OnMainMenuBtnClicked(lv_event_t *event) {
   const char *btnId = (const char *)lv_event_get_user_data(event);
 
-  // Se o botão de rede foi clicado, comanda o backend a agir!
   if (strcmp(btnId, "wifi") == 0) {
-    Serial.println("Interface solicitou abertura do menu de rede...");
+    interfaceApp.ShowWifiLoading();
     wifiCore.StartScan();
   }
+}
+
+void PatroUiManager::OnBackBtnClicked(lv_event_t *event) {
+  lv_obj_clean(interfaceApp.contentArea);
+  interfaceApp.BuildMainMenu(); // Reconstrói o menu principal
+}
+
+void PatroUiManager::OnNetworkBtnClicked(lv_event_t *event) {
+  Serial.println("Rede selecionada! Preparar para abrir o teclado.");
 }
