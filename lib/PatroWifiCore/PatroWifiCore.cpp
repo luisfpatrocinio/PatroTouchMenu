@@ -8,9 +8,7 @@ void PatroWifiCore::Init() {
 }
 
 void PatroWifiCore::Update() {
-  // Avalia o que fazer baseado no estado atual
   if (currentState == WifiState::Scanning) {
-    // scanComplete retorna valores negativos se ainda estiver procurando
     int scanResult = WiFi.scanComplete();
 
     if (scanResult >= 0) {
@@ -18,16 +16,27 @@ void PatroWifiCore::Update() {
       currentState = WifiState::ScanComplete;
       Serial.print("Scan concluido! Redes encontradas: ");
       Serial.println(foundNetworks);
-    } else if (scanResult == WIFI_SCAN_FAILED) {
-      currentState = WifiState::Disconnected;
-      Serial.println("Falha no scan de redes.");
+    }
+    // -1 significa WIFI_SCAN_RUNNING. Está tudo normal, o rádio está
+    // trabalhando.
+    else if (scanResult == -1) {
+      // Apenas aguarda pacificamente
+    }
+    // -2 significa WIFI_SCAN_FAILED. Aqui entra a nossa proteção K.I.S.S.
+    else if (scanResult == -2) {
+      // Só consideramos que falhou de verdade se já se passou 1 segundo do
+      // pedido
+      if (millis() - connectionStartTime > 1000) {
+        currentState = WifiState::Disconnected;
+        Serial.println("Falha real no scan de redes.");
+      }
     }
   } else if (currentState == WifiState::Connecting) {
     if (WiFi.status() == WL_CONNECTED) {
       currentState = WifiState::Connected;
       Serial.println("Wi-Fi Conectado com sucesso!");
     }
-    // Timeout de 10 segundos para não ficar preso tentando conectar
+    // Timeout de 10 segundos para não ficar preso
     else if (millis() - connectionStartTime > 10000) {
       WiFi.disconnect();
       currentState = WifiState::Disconnected;
@@ -39,11 +48,26 @@ void PatroWifiCore::Update() {
 void PatroWifiCore::StartScan() {
   if (currentState != WifiState::Scanning &&
       currentState != WifiState::Connecting) {
-    currentState = WifiState::Scanning;
 
-    // O parametro 'true' ativa o modo assíncrono!
-    WiFi.scanNetworks(true);
-    Serial.println("Iniciando scan assincrono...");
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(200); // Dá um tempinho extra pro rádio respirar
+
+    Serial.println("Iniciando scan SINCRONO (Teste de Hardware)...");
+
+    // Passar 'false' trava o processador até o scan terminar!
+    int n = WiFi.scanNetworks(false);
+
+    if (n >= 0) {
+      foundNetworks = n;
+      currentState = WifiState::ScanComplete;
+      Serial.print("Sucesso! Redes encontradas: ");
+      Serial.println(foundNetworks);
+    } else {
+      currentState = WifiState::Disconnected;
+      Serial.print("Falha critica de hardware. Codigo de erro: ");
+      Serial.println(n);
+    }
   }
 }
 

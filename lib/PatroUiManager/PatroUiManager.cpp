@@ -13,23 +13,40 @@ void PatroUiManager::Init() {
 }
 
 void PatroUiManager::Update() {
-  // Se a splash screen estiver ativa e já se passaram 2 segundos
   if (isSplashActive && (millis() - splashStartTime > 2000)) {
     isSplashActive = false;
-
-    // Deleta a splash screen da memória
     lv_obj_delete(splashScreen);
-
-    // Constrói a interface definitiva
     BuildMasterLayout();
     BuildMainMenu();
   }
 
-  // Fica de olho no backend. Se o scan terminar, desenha a lista!
-  if (isWaitingForScan && wifiCore.GetState() == WifiState::ScanComplete) {
-    isWaitingForScan = false;
-    BuildWifiList();
+  if (isWaitingForScan) {
+    if (wifiCore.GetState() == WifiState::ScanComplete) {
+      isWaitingForScan = false;
+      BuildWifiList();
+    }
+    // Se falhar ou desconectar no meio do processo, aborta a tela de loading
+    else if (wifiCore.GetState() == WifiState::Disconnected) {
+      isWaitingForScan = false;
+      HandleScanFailure();
+    }
   }
+}
+
+void PatroUiManager::HandleScanFailure() {
+  lv_obj_clean(contentArea);
+  lv_obj_t *errorLabel = lv_label_create(contentArea);
+  lv_label_set_text(errorLabel, LV_SYMBOL_WARNING
+                    " Falha ao buscar redes.\nTente novamente.");
+  lv_obj_set_style_text_color(errorLabel, lv_color_hex(0xFF0000), 0);
+  lv_obj_center(errorLabel);
+
+  // Botão para voltar
+  lv_obj_t *btnBack = lv_btn_create(contentArea);
+  lv_obj_align(btnBack, LV_ALIGN_BOTTOM_MID, 0, -20);
+  lv_obj_t *btnLabel = lv_label_create(btnBack);
+  lv_label_set_text(btnLabel, "Voltar");
+  lv_obj_add_event_cb(btnBack, OnBackBtnClicked, LV_EVENT_CLICKED, NULL);
 }
 
 void PatroUiManager::BuildSplashScreen() {
@@ -134,7 +151,6 @@ void PatroUiManager::BuildWifiList() {
   lv_obj_set_style_border_width(wifiList, 0, 0);
   lv_obj_set_style_bg_color(wifiList, lv_color_hex(0x1a1a1a), 0);
 
-  // Adiciona o botão de voltar primeiro, no topo da lista
   lv_obj_t *btnBack = lv_list_add_button(wifiList, LV_SYMBOL_LEFT, "  Voltar");
   lv_obj_add_event_cb(btnBack, OnBackBtnClicked, LV_EVENT_CLICKED, NULL);
 
@@ -143,12 +159,14 @@ void PatroUiManager::BuildWifiList() {
   if (totalNetworks == 0) {
     lv_list_add_text(wifiList, "Nenhuma rede encontrada.");
   } else {
-    // Laço de repetição para criar um botão para cada roteador encontrado
     for (int i = 0; i < totalNetworks; i++) {
       String ssid = wifiCore.GetNetworkName(i);
       lv_obj_t *btnNet =
           lv_list_add_button(wifiList, LV_SYMBOL_WIFI, ssid.c_str());
-      lv_obj_add_event_cb(btnNet, OnNetworkBtnClicked, LV_EVENT_CLICKED, NULL);
+
+      // O truque: passamos o índice 'i' diretamente no user_data!
+      lv_obj_add_event_cb(btnNet, OnNetworkBtnClicked, LV_EVENT_CLICKED,
+                          (void *)(uintptr_t)i);
     }
   }
 }
@@ -168,5 +186,63 @@ void PatroUiManager::OnBackBtnClicked(lv_event_t *event) {
 }
 
 void PatroUiManager::OnNetworkBtnClicked(lv_event_t *event) {
-  Serial.println("Rede selecionada! Preparar para abrir o teclado.");
+  // Recupera o índice da rede que salvamos no user_data
+  int index = (int)(uintptr_t)lv_event_get_user_data(event);
+
+  // Salva o SSID na interface global
+  interfaceApp.selectedSsid = wifiCore.GetNetworkName(index);
+
+  // Abre a tela de senha
+  interfaceApp.ShowPasswordInput();
+}
+
+void PatroUiManager::ShowPasswordInput() {
+  lv_obj_clean(contentArea);
+
+  lv_obj_t *titleLabel = lv_label_create(contentArea);
+  lv_label_set_text_fmt(titleLabel, "Senha para: %s", selectedSsid.c_str());
+  lv_obj_set_style_text_color(titleLabel, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 5);
+
+  // Cria a caixa de texto
+  passwordTextArea = lv_textarea_create(contentArea);
+  lv_obj_set_width(passwordTextArea, 280);
+  lv_obj_align(passwordTextArea, LV_ALIGN_TOP_MID, 0, 30);
+  lv_textarea_set_password_mode(passwordTextArea,
+                                true); // Esconde a senha com asteriscos
+  lv_textarea_set_one_line(passwordTextArea, true);
+  lv_textarea_set_placeholder_text(passwordTextArea, "Digite a senha...");
+
+  // Cria o teclado virtual ocupando a base da tela
+  keyboard = lv_keyboard_create(contentArea);
+  lv_keyboard_set_textarea(keyboard,
+                           passwordTextArea); // Linka o teclado na caixa
+  lv_obj_set_size(keyboard, 320, 130);
+  lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+
+  // Eventos do teclado ("V" para confirmar, "X" ou teclado pra baixo para
+  // cancelar)
+  lv_obj_add_event_cb(keyboard, OnKeyboardReadyBtn, LV_EVENT_READY, NULL);
+  lv_obj_add_event_cb(keyboard, OnKeyboardCancelBtn, LV_EVENT_CANCEL, NULL);
+}
+
+void PatroUiManager::OnKeyboardReadyBtn(lv_event_t *event) {
+  const char *password = lv_textarea_get_text(interfaceApp.passwordTextArea);
+
+  Serial.print("Conectando em: ");
+  Serial.println(interfaceApp.selectedSsid);
+  Serial.print("Senha digitada: ");
+  Serial.println(password);
+
+  // Manda o backend conectar!
+  wifiCore.ConnectToNetwork(interfaceApp.selectedSsid.c_str(), password);
+
+  // Limpa a tela e volta pro menu principal enquanto conecta em background
+  lv_obj_clean(interfaceApp.contentArea);
+  interfaceApp.BuildMainMenu();
+}
+
+void PatroUiManager::OnKeyboardCancelBtn(lv_event_t *event) {
+  // Se o usuário desistir, só voltamos para a lista de redes
+  interfaceApp.BuildWifiList();
 }
