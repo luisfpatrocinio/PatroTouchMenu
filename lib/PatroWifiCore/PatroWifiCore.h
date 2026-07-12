@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-
 // Máquina de estados para facilitar a vida da nossa UI
 enum class WifiState {
   Disconnected,
@@ -30,6 +29,9 @@ private:
   WifiState currentState;
   int foundNetworks;
   unsigned long connectionStartTime;
+
+  String targetSsid;
+  String targetPassword;
 };
 
 #endif

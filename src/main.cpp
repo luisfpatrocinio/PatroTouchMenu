@@ -1,15 +1,14 @@
 #include "PatroLvglManager.h"
+#include "PatroStorageCore.h"
 #include "PatroUiManager.h"
-#include "PatroWifiCore.h" // Importa o nosso novo modulo
+#include "PatroWifiCore.h"
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
-
 TFT_eSPI tft = TFT_eSPI();
 PatroLvglManager hardwareCore(tft);
+PatroStorageCore storageCore;
 PatroUiManager interfaceApp;
-
-// Instancia globalmente para a UI poder acessá-lo depois
 PatroWifiCore wifiCore;
 
 void setup() {
@@ -17,12 +16,20 @@ void setup() {
 
   hardwareCore.Init();
   interfaceApp.Init();
-  wifiCore.Init(); // Inicia o rádio do ESP32
+  storageCore.Init();
+  wifiCore.Init();
+
+  // Sistema de Auto-Connect
+  if (storageCore.HasSavedWifi()) {
+    Serial.println("Rede salva encontrada! Conectando automaticamente...");
+    wifiCore.ConnectToNetwork(storageCore.GetSavedSsid().c_str(),
+                              storageCore.GetSavedPassword().c_str());
+  }
 }
 
 void loop() {
   hardwareCore.Update();
   interfaceApp.Update();
-  wifiCore.Update(); // Mantém o estado da rede atualizado
+  wifiCore.Update();
   delay(5);
 }

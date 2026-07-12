@@ -1,4 +1,7 @@
 #include "PatroWifiCore.h"
+#include "PatroStorageCore.h"
+
+extern PatroStorageCore storageCore;
 
 void PatroWifiCore::Init() {
   WiFi.mode(WIFI_STA); // Modo Estação (Cliente)
@@ -35,6 +38,9 @@ void PatroWifiCore::Update() {
     if (WiFi.status() == WL_CONNECTED) {
       currentState = WifiState::Connected;
       Serial.println("Wi-Fi Conectado com sucesso!");
+
+      // Salva na memória permanentemente!
+      storageCore.SaveWifiCredentials(targetSsid, targetPassword);
     }
     // Timeout de 10 segundos para não ficar preso
     else if (millis() - connectionStartTime > 10000) {
@@ -75,8 +81,12 @@ void PatroWifiCore::ConnectToNetwork(const char *ssid, const char *password) {
   if (currentState != WifiState::Connecting) {
     currentState = WifiState::Connecting;
     connectionStartTime = millis();
-    WiFi.begin(ssid, password);
 
+    // Salva os dados localmente para uso futuro
+    targetSsid = String(ssid);
+    targetPassword = String(password);
+
+    WiFi.begin(ssid, password);
     Serial.print("Tentando conectar a: ");
     Serial.println(ssid);
   }
