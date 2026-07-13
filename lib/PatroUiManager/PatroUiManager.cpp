@@ -57,8 +57,8 @@ void PatroUiManager::Update() {
   // ==========================================
   WifiState currentState = wifiCore.GetState();
 
-  // Só atualiza a tela se o estado mudou (evita piscar a tela à toa)
-  if (currentState != lastWifiState) {
+  // Só atualiza a tela se o estado mudou (evita piscar a tela à toa) e a barra de status já existir
+  if (!isSplashActive && currentState != lastWifiState) {
     lastWifiState = currentState;
 
     if (currentState == WifiState::Connected) {

@@ -16,8 +16,8 @@ void setup() {
   Serial.begin(115200);
 
   hardwareCore.Init();
-  interfaceApp.Init();
   storageCore.Init();
+  interfaceApp.Init();
   wifiCore.Init();
 
   // Sistema de Auto-Connect
