@@ -118,7 +118,6 @@ void PatroUiManager::BuildSplashScreen() {
 
 void PatroUiManager::BuildMasterLayout() {
   lv_obj_t *screen = lv_screen_active();
-  lv_obj_set_style_bg_color(screen, lv_color_hex(0x1a1a1a), 0);
 
   // Barra de Status
   statusBar = lv_obj_create(screen);
@@ -145,7 +144,6 @@ void PatroUiManager::BuildMasterLayout() {
   lv_obj_align(contentArea, LV_ALIGN_BOTTOM_MID, 0, 0);
   lv_obj_set_style_radius(contentArea, 0, 0);
   lv_obj_set_style_border_width(contentArea, 0, 0);
-  lv_obj_set_style_bg_color(contentArea, lv_color_hex(0x1a1a1a), 0);
   lv_obj_set_style_pad_all(contentArea, 0, 0);
 }
 
@@ -155,7 +153,6 @@ void PatroUiManager::BuildMainMenu() {
   lv_obj_center(mainMenu);
   lv_obj_set_style_radius(mainMenu, 0, 0);
   lv_obj_set_style_border_width(mainMenu, 0, 0);
-  lv_obj_set_style_bg_color(mainMenu, lv_color_hex(0x1a1a1a), 0);
 
   lv_obj_t *btnWifi =
       lv_list_add_button(mainMenu, LV_SYMBOL_WIFI, "  Rede Wi-Fi");
@@ -193,7 +190,6 @@ void PatroUiManager::BuildWifiList() {
   lv_obj_center(wifiList);
   lv_obj_set_style_radius(wifiList, 0, 0);
   lv_obj_set_style_border_width(wifiList, 0, 0);
-  lv_obj_set_style_bg_color(wifiList, lv_color_hex(0x1a1a1a), 0);
 
   lv_obj_t *btnBack = lv_list_add_button(wifiList, LV_SYMBOL_LEFT, "  Voltar");
   lv_obj_add_event_cb(btnBack, OnBackBtnClicked, LV_EVENT_CLICKED, NULL);
@@ -307,6 +303,9 @@ void PatroUiManager::ApplyThemeColor(uint32_t hexColor) {
                             LV_FONT_DEFAULT);
 
   lv_display_set_theme(NULL, theme);
+  
+  // Avisa todos os widgets da tela que o tema mudou!
+  lv_obj_report_style_change(NULL);
 }
 
 void PatroUiManager::BuildThemeScreen() {
