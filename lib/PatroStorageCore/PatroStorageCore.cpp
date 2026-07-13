@@ -33,3 +33,13 @@ void PatroStorageCore::ClearWifiCredentials() {
   preferences.remove("wifiPass");
   Serial.println("Credenciais apagadas da memoria.");
 }
+
+void PatroStorageCore::SaveThemeColor(uint32_t hexColor) {
+  preferences.putUInt("themeCol", hexColor);
+  Serial.println("Cor do tema salva na memoria!");
+}
+
+uint32_t PatroStorageCore::GetThemeColor() {
+  // Retorna a cor salva, ou um Azul bonito (0x00A8FF) se for a primeira vez
+  return preferences.getUInt("themeCol", 0x00A8FF);
+}

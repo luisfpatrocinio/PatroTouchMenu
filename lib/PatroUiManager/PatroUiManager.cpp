@@ -12,6 +12,11 @@ void PatroUiManager::Init() {
   isPendingScan = false;
   lastWifiState = WifiState::Disconnected;
   splashStartTime = millis();
+
+  // Recupera a cor salva e já aplica no LVGL!
+  currentThemeColor = storageCore.GetThemeColor();
+  ApplyThemeColor(currentThemeColor);
+
   BuildSplashScreen();
 }
 
@@ -212,12 +217,11 @@ void PatroUiManager::OnMainMenuBtnClicked(lv_event_t *event) {
   const char *btnId = (const char *)lv_event_get_user_data(event);
 
   if (strcmp(btnId, "wifi") == 0) {
-    // Pede pro LVGL desenhar a tela de loading
     interfaceApp.ShowWifiLoading();
-
-    // Arma o gatilho e anota a hora exata
     interfaceApp.isPendingScan = true;
     interfaceApp.scanTriggerTime = millis();
+  } else if (strcmp(btnId, "theme") == 0) {
+    interfaceApp.BuildThemeScreen();
   }
 }
 
@@ -286,4 +290,68 @@ void PatroUiManager::OnKeyboardReadyBtn(lv_event_t *event) {
 void PatroUiManager::OnKeyboardCancelBtn(lv_event_t *event) {
   // Se o usuário desistir, só voltamos para a lista de redes
   interfaceApp.BuildWifiList();
+}
+
+void PatroUiManager::ApplyThemeColor(uint32_t hexColor) {
+  currentThemeColor = hexColor;
+
+  // Configura o tema padrão do LVGL como Modo Escuro (true) e passa a nova cor
+  // principal
+  lv_theme_t *theme =
+      lv_theme_default_init(NULL, // Usa o display padrão
+                            lv_color_hex(hexColor),
+                            lv_color_hex(0x444444), // Cor secundária (cinza)
+                            true,                   // Modo Escuro ativado
+                            LV_FONT_DEFAULT);
+
+  lv_display_set_theme(NULL, theme);
+}
+
+void PatroUiManager::BuildThemeScreen() {
+  lv_obj_clean(contentArea);
+
+  lv_obj_t *titleLabel = lv_label_create(contentArea);
+  lv_label_set_text(titleLabel, LV_SYMBOL_TINT " Cor do Sistema");
+  lv_obj_set_style_text_color(titleLabel, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 5);
+
+  // Cria a Roda de Cores interativa
+  colorWheel = lv_colorwheel_create(contentArea, true);
+  lv_obj_set_size(colorWheel, 130, 130);
+  lv_obj_align(colorWheel, LV_ALIGN_CENTER, 0, 0);
+  lv_colorwheel_set_rgb(colorWheel, lv_color_hex(currentThemeColor));
+
+  // O evento que capta o arrastar do dedo
+  lv_obj_add_event_cb(colorWheel, OnThemeColorChanged, LV_EVENT_VALUE_CHANGED,
+                      NULL);
+
+  // Botões Inferiores
+  lv_obj_t *btnBack = lv_btn_create(contentArea);
+  lv_obj_align(btnBack, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+  lv_obj_t *labelBack = lv_label_create(btnBack);
+  lv_label_set_text(labelBack, LV_SYMBOL_LEFT " Voltar");
+  lv_obj_add_event_cb(btnBack, OnBackBtnClicked, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t *btnSave = lv_btn_create(contentArea);
+  lv_obj_align(btnSave, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
+  lv_obj_t *labelSave = lv_label_create(btnSave);
+  lv_label_set_text(labelSave, LV_SYMBOL_SAVE " Salvar");
+  lv_obj_add_event_cb(btnSave, OnSaveThemeBtnClicked, LV_EVENT_CLICKED, NULL);
+}
+
+void PatroUiManager::OnThemeColorChanged(lv_event_t *event) {
+  // Pega a cor atual da roda
+  lv_color_t color = lv_colorwheel_get_rgb(interfaceApp.colorWheel);
+
+  // Converte para hexadecimal e aplica na tela na mesma hora
+  interfaceApp.ApplyThemeColor(lv_color_to_u32(color));
+}
+
+void PatroUiManager::OnSaveThemeBtnClicked(lv_event_t *event) {
+  // Manda gravar na Flash
+  storageCore.SaveThemeColor(interfaceApp.currentThemeColor);
+
+  // Volta pro menu
+  lv_obj_clean(interfaceApp.contentArea);
+  interfaceApp.BuildMainMenu();
 }

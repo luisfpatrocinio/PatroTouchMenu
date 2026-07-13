@@ -13,6 +13,9 @@ public:
   bool HasSavedWifi();
   void ClearWifiCredentials();
 
+  void SaveThemeColor(uint32_t hexColor);
+  uint32_t GetThemeColor();
+
 private:
   Preferences preferences;
 };

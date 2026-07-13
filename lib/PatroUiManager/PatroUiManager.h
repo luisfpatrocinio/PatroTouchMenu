@@ -33,6 +33,18 @@ private:
   lv_obj_t *passwordTextArea;
   String selectedSsid;
 
+  // Variáveis do Tema
+  lv_obj_t *colorWheel;
+  uint32_t currentThemeColor;
+
+  // Funções do Tema
+  void ApplyThemeColor(uint32_t hexColor);
+  void BuildThemeScreen();
+
+  // Callbacks
+  static void OnThemeColorChanged(lv_event_t *event);
+  static void OnSaveThemeBtnClicked(lv_event_t *event);
+
   // Novas funções visuais
   void ShowPasswordInput();
   void HandleScanFailure();
