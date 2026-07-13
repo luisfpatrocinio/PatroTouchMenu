@@ -34,7 +34,7 @@ private:
   String selectedSsid;
 
   // Variáveis do Tema
-  lv_obj_t *colorWheel;
+  lv_obj_t *themeArc;
   uint32_t currentThemeColor;
 
   // Funções do Tema

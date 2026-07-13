@@ -1,10 +1,12 @@
 #include "PatroUiManager.h"
+#include "PatroStorageCore.h"
 #include "PatroWifiCore.h"
 #include <Arduino.h>
 
 // Instâncias globais necessárias para os callbacks se comunicarem
 extern PatroWifiCore wifiCore;
 extern PatroUiManager interfaceApp;
+extern PatroStorageCore storageCore;
 
 void PatroUiManager::Init() {
   isSplashActive = true;
@@ -315,14 +317,17 @@ void PatroUiManager::BuildThemeScreen() {
   lv_obj_set_style_text_color(titleLabel, lv_color_hex(0xFFFFFF), 0);
   lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 5);
 
-  // Cria a Roda de Cores interativa
-  colorWheel = lv_colorwheel_create(contentArea, true);
-  lv_obj_set_size(colorWheel, 130, 130);
-  lv_obj_align(colorWheel, LV_ALIGN_CENTER, 0, 0);
-  lv_colorwheel_set_rgb(colorWheel, lv_color_hex(currentThemeColor));
+  // Cria o Arco Interativo (Substituindo a antiga roda de cores)
+  themeArc = lv_arc_create(contentArea);
+  lv_obj_set_size(themeArc, 130, 130);
+  lv_obj_align(themeArc, LV_ALIGN_CENTER, 0, 0);
 
-  // O evento que capta o arrastar do dedo
-  lv_obj_add_event_cb(colorWheel, OnThemeColorChanged, LV_EVENT_VALUE_CHANGED,
+  // Configura o arco para dar uma volta completa (0 a 359 graus do sistema HSV)
+  lv_arc_set_range(themeArc, 0, 359);
+  lv_arc_set_value(themeArc, 200); // Valor inicial (um tom de azul)
+
+  // Dispara o evento toda vez que você arrastar o arco
+  lv_obj_add_event_cb(themeArc, OnThemeColorChanged, LV_EVENT_VALUE_CHANGED,
                       NULL);
 
   // Botões Inferiores
@@ -340,10 +345,13 @@ void PatroUiManager::BuildThemeScreen() {
 }
 
 void PatroUiManager::OnThemeColorChanged(lv_event_t *event) {
-  // Pega a cor atual da roda
-  lv_color_t color = lv_colorwheel_get_rgb(interfaceApp.colorWheel);
+  // Pega o valor do arco (Matiz / Hue)
+  int hue = lv_arc_get_value(interfaceApp.themeArc);
 
-  // Converte para hexadecimal e aplica na tela na mesma hora
+  // Converte HSV para RGB (Matiz atual, 100% de Saturação, 100% de Brilho)
+  lv_color_t color = lv_color_hsv_to_rgb(hue, 100, 100);
+
+  // Converte a cor nativa para inteiro hexadecimal de 32 bits e aplica
   interfaceApp.ApplyThemeColor(lv_color_to_u32(color));
 }
 
