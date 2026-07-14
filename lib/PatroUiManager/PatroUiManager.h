@@ -27,6 +27,9 @@ private:
 
   lv_obj_t *labelWifiIcon;
   lv_obj_t *labelBatteryIcon;
+  lv_obj_t *labelTime;
+
+  unsigned long lastTimeUpdate;
 
   // Variáveis para o Teclado
   lv_obj_t *keyboard;

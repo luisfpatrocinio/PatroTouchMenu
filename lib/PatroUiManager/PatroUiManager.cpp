@@ -1,12 +1,14 @@
 #include "PatroUiManager.h"
 #include "PatroStorageCore.h"
 #include "PatroWifiCore.h"
+#include "PatroTimeCore.h"
 #include <Arduino.h>
 
 // Instâncias globais necessárias para os callbacks se comunicarem
 extern PatroWifiCore wifiCore;
 extern PatroUiManager interfaceApp;
 extern PatroStorageCore storageCore;
+extern PatroTimeCore timeCore;
 
 void PatroUiManager::Init() {
   isSplashActive = true;
@@ -14,6 +16,7 @@ void PatroUiManager::Init() {
   isPendingScan = false;
   lastWifiState = WifiState::Disconnected;
   splashStartTime = millis();
+  lastTimeUpdate = 0;
 
   // Recupera a cor salva e já aplica no LVGL!
   currentThemeColor = storageCore.GetThemeColor();
@@ -74,6 +77,14 @@ void PatroUiManager::Update() {
       lv_obj_set_style_text_color(labelWifiIcon, lv_color_hex(0x888888),
                                   0); // Cinza
     }
+  }
+
+  // ==========================================
+  // ATUALIZAÇÃO DO RELÓGIO
+  // ==========================================
+  if (!isSplashActive && (millis() - lastTimeUpdate >= 1000)) {
+    lastTimeUpdate = millis();
+    lv_label_set_text(labelTime, timeCore.GetFormattedTime().c_str());
   }
 }
 
@@ -137,6 +148,11 @@ void PatroUiManager::BuildMasterLayout() {
   lv_label_set_text(labelBatteryIcon, "100% " LV_SYMBOL_BATTERY_FULL);
   lv_obj_align(labelBatteryIcon, LV_ALIGN_RIGHT_MID, 0, 0);
   lv_obj_set_style_text_color(labelBatteryIcon, lv_color_hex(0xFFFFFF), 0);
+
+  labelTime = lv_label_create(statusBar);
+  lv_label_set_text(labelTime, "--:--");
+  lv_obj_align(labelTime, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_text_color(labelTime, lv_color_hex(0xFFFFFF), 0);
 
   // Área Principal
   contentArea = lv_obj_create(screen);
