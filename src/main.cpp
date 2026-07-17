@@ -1,11 +1,12 @@
-#include "PatroLvglManager.h"
-#include "PatroStorageCore.h"
-#include "PatroUiManager.h"
-#include "PatroWifiCore.h"
-#include "PatroTimeCore.h"
 #include <Arduino.h>
 #include <Preferences.h>
 #include <TFT_eSPI.h>
+
+#include "PatroLvglManager.h"
+#include "PatroStorageCore.h"
+#include "PatroTimeCore.h"
+#include "PatroUiManager.h"
+#include "PatroWifiCore.h"
 
 TFT_eSPI tft = TFT_eSPI();
 PatroLvglManager hardwareCore(tft);

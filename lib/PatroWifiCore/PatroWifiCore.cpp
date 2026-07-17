@@ -1,3 +1,4 @@
+#include <Preferences.h>
 #include "PatroWifiCore.h"
 #include "PatroStorageCore.h"
 
