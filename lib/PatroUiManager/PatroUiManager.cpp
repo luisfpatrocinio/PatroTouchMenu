@@ -1,7 +1,7 @@
 #include "PatroUiManager.h"
 #include "PatroStorageCore.h"
-#include "PatroWifiCore.h"
 #include "PatroTimeCore.h"
+#include "PatroWifiCore.h"
 #include <Arduino.h>
 
 // Instâncias globais necessárias para os callbacks se comunicarem
@@ -60,7 +60,8 @@ void PatroUiManager::Update() {
   // ==========================================
   WifiState currentState = wifiCore.GetState();
 
-  // Só atualiza a tela se o estado mudou (evita piscar a tela à toa) e a barra de status já existir
+  // Só atualiza a tela se o estado mudou (evita piscar a tela à toa) e a barra
+  // de status já existir
   if (!isSplashActive && currentState != lastWifiState) {
     lastWifiState = currentState;
 
@@ -170,16 +171,25 @@ void PatroUiManager::BuildMainMenu() {
   lv_obj_set_style_radius(mainMenu, 0, 0);
   lv_obj_set_style_border_width(mainMenu, 0, 0);
 
+  // 1. Rede Wi-Fi
   lv_obj_t *btnWifi =
       lv_list_add_button(mainMenu, LV_SYMBOL_WIFI, "  Rede Wi-Fi");
   lv_obj_add_event_cb(btnWifi, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
                       (void *)"wifi");
 
+  // 2. RetroAchievements
+  lv_obj_t *btnRetro =
+      lv_list_add_button(mainMenu, LV_SYMBOL_PLAY, "  RetroAchievements");
+  lv_obj_add_event_cb(btnRetro, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
+                      (void *)"retro");
+
+  // 3. Personalizar Tema
   lv_obj_t *btnTheme =
       lv_list_add_button(mainMenu, LV_SYMBOL_TINT, "  Personalizar Tema");
   lv_obj_add_event_cb(btnTheme, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
                       (void *)"theme");
 
+  // 4. Configurações do Sistema
   lv_obj_t *btnSys = lv_list_add_button(mainMenu, LV_SYMBOL_SETTINGS,
                                         "  Configuracoes do Sistema");
   lv_obj_add_event_cb(btnSys, OnMainMenuBtnClicked, LV_EVENT_CLICKED,
@@ -236,6 +246,12 @@ void PatroUiManager::OnMainMenuBtnClicked(lv_event_t *event) {
     interfaceApp.scanTriggerTime = millis();
   } else if (strcmp(btnId, "theme") == 0) {
     interfaceApp.BuildThemeScreen();
+  } else if (strcmp(btnId, "retro") == 0) {
+    if (storageCore.HasRetroUsername()) {
+      interfaceApp.BuildRetroDashboard();
+    } else {
+      interfaceApp.BuildRetroLoginScreen();
+    }
   }
 }
 
@@ -319,7 +335,7 @@ void PatroUiManager::ApplyThemeColor(uint32_t hexColor) {
                             LV_FONT_DEFAULT);
 
   lv_display_set_theme(NULL, theme);
-  
+
   // Avisa todos os widgets da tela que o tema mudou!
   lv_obj_report_style_change(NULL);
 }
@@ -377,4 +393,73 @@ void PatroUiManager::OnSaveThemeBtnClicked(lv_event_t *event) {
   // Volta pro menu
   lv_obj_clean(interfaceApp.contentArea);
   interfaceApp.BuildMainMenu();
+}
+
+// ==========================================
+// TELAS DA RETROACHIEVEMENTS
+// ==========================================
+
+void PatroUiManager::BuildRetroLoginScreen() {
+  lv_obj_clean(contentArea);
+
+  // Título
+  lv_obj_t *titleLabel = lv_label_create(contentArea);
+  lv_label_set_text(titleLabel, LV_SYMBOL_EDIT " Perfil Retro");
+  lv_obj_align(titleLabel, LV_ALIGN_TOP_MID, 0, 5);
+
+  // Caixa de Texto (Text Area)
+  retroUserTextArea = lv_textarea_create(contentArea);
+  lv_textarea_set_one_line(retroUserTextArea, true);
+  lv_textarea_set_placeholder_text(retroUserTextArea, "Digite seu usuario...");
+  lv_obj_set_width(retroUserTextArea, lv_pct(90));
+  lv_obj_align(retroUserTextArea, LV_ALIGN_TOP_MID, 0, 40);
+
+  // Teclado Virtual
+  lv_obj_t *retroKeyboard = lv_keyboard_create(contentArea);
+  lv_keyboard_set_textarea(retroKeyboard,
+                           retroUserTextArea); // Conecta o teclado na caixa
+
+  // Escuta os eventos de Confirmar e Cancelar
+  lv_obj_add_event_cb(retroKeyboard, OnRetroKeyboardEvent, LV_EVENT_READY,
+                      NULL);
+  lv_obj_add_event_cb(retroKeyboard, OnRetroKeyboardEvent, LV_EVENT_CANCEL,
+                      NULL);
+}
+
+void PatroUiManager::BuildRetroDashboard() {
+  lv_obj_clean(contentArea);
+
+  // Por enquanto, apenas um texto de sucesso e um botão de voltar
+  String welcomeText = "Jogador: " + storageCore.GetRetroUsername() +
+                       "\n(Dashboard em construcao...)";
+
+  lv_obj_t *labelInfo = lv_label_create(contentArea);
+  lv_label_set_text(labelInfo, welcomeText.c_str());
+  lv_obj_align(labelInfo, LV_ALIGN_CENTER, 0, -20);
+
+  // Botão de Voltar
+  lv_obj_t *btnBack = lv_btn_create(contentArea);
+  lv_obj_align(btnBack, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+  lv_obj_t *labelBack = lv_label_create(btnBack);
+  lv_label_set_text(labelBack, LV_SYMBOL_LEFT " Voltar");
+  lv_obj_add_event_cb(btnBack, OnBackBtnClicked, LV_EVENT_CLICKED, NULL);
+}
+
+void PatroUiManager::OnRetroKeyboardEvent(lv_event_t *event) {
+  lv_event_code_t code = lv_event_get_code(event);
+
+  if (code == LV_EVENT_READY) {
+    // Pega o texto digitado
+    const char *typedUser =
+        lv_textarea_get_text(interfaceApp.retroUserTextArea);
+
+    if (strlen(typedUser) > 0) {
+      // Salva na memória Flash e avança para o Dashboard
+      storageCore.SaveRetroUsername(String(typedUser));
+      interfaceApp.BuildRetroDashboard();
+    }
+  } else if (code == LV_EVENT_CANCEL) {
+    // Desistiu de digitar, volta pro menu
+    interfaceApp.BuildMainMenu();
+  }
 }

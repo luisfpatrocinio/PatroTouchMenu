@@ -68,6 +68,16 @@ private:
   // Callbacks do Teclado
   static void OnKeyboardReadyBtn(lv_event_t *event);
   static void OnKeyboardCancelBtn(lv_event_t *event);
+
+  // Variáveis da RetroAchievements
+  lv_obj_t *retroUserTextArea;
+
+  // Funções Construtoras
+  void BuildRetroLoginScreen();
+  void BuildRetroDashboard();
+
+  // Callbacks
+  static void OnRetroKeyboardEvent(lv_event_t *event);
 };
 
 #endif

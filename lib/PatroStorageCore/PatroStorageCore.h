@@ -16,6 +16,10 @@ public:
   void SaveThemeColor(uint32_t hexColor);
   uint32_t GetThemeColor();
 
+  void SaveRetroUsername(const String &username);
+  String GetRetroUsername();
+  bool HasRetroUsername();
+
 private:
   Preferences preferences;
 };

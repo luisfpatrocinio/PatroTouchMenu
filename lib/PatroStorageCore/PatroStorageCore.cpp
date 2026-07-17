@@ -43,3 +43,17 @@ uint32_t PatroStorageCore::GetThemeColor() {
   // Retorna a cor salva, ou um Azul bonito (0x00A8FF) se for a primeira vez
   return preferences.getUInt("themeCol", 0x00A8FF);
 }
+
+void PatroStorageCore::SaveRetroUsername(const String &username) {
+  preferences.putString("retroUser", username);
+  Serial.print("Usuario RetroAchievements salvo: ");
+  Serial.println(username);
+}
+
+String PatroStorageCore::GetRetroUsername() {
+  return preferences.getString("retroUser", "");
+}
+
+bool PatroStorageCore::HasRetroUsername() {
+  return GetRetroUsername().length() > 0;
+}
