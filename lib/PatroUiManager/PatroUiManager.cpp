@@ -2,6 +2,7 @@
 #include "PatroStorageCore.h"
 #include "PatroTimeCore.h"
 #include "PatroWifiCore.h"
+#include "PatroRetroCore.h"
 #include <Arduino.h>
 
 // Instâncias globais necessárias para os callbacks se comunicarem
@@ -9,6 +10,7 @@ extern PatroWifiCore wifiCore;
 extern PatroUiManager interfaceApp;
 extern PatroStorageCore storageCore;
 extern PatroTimeCore timeCore;
+extern PatroRetroCore retroCore;
 
 void PatroUiManager::Init() {
   isSplashActive = true;
@@ -248,6 +250,13 @@ void PatroUiManager::OnMainMenuBtnClicked(lv_event_t *event) {
     interfaceApp.BuildThemeScreen();
   } else if (strcmp(btnId, "retro") == 0) {
     if (storageCore.HasRetroUsername()) {
+      String savedUser = storageCore.GetRetroUsername();
+
+      // Dispara a requisição HTTP para a API
+      Serial.print("Buscando dados de: ");
+      Serial.println(savedUser);
+      retroCore.FetchPlayerSummary(savedUser);
+
       interfaceApp.BuildRetroDashboard();
     } else {
       interfaceApp.BuildRetroLoginScreen();
