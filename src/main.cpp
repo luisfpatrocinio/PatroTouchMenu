@@ -7,6 +7,7 @@
 #include "PatroTimeCore.h"
 #include "PatroUiManager.h"
 #include "PatroWifiCore.h"
+#include "PatroRetroCore.h"
 
 TFT_eSPI tft = TFT_eSPI();
 PatroLvglManager hardwareCore(tft);
@@ -14,6 +15,7 @@ PatroStorageCore storageCore;
 PatroUiManager interfaceApp;
 PatroWifiCore wifiCore;
 PatroTimeCore timeCore;
+PatroRetroCore retroCore;
 
 void setup() {
   Serial.begin(115200);
@@ -23,6 +25,7 @@ void setup() {
   interfaceApp.Init();
   wifiCore.Init();
   timeCore.Init();
+  retroCore.Init();
 
   // Sistema de Auto-Connect
   if (storageCore.HasSavedWifi()) {
@@ -37,5 +40,6 @@ void loop() {
   interfaceApp.Update();
   wifiCore.Update();
   timeCore.Update();
+  retroCore.Update();
   delay(5);
 }
